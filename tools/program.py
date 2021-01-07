@@ -113,7 +113,6 @@ def merge_config(config):
                 global_config.keys(), sub_keys[0])
             cur = global_config[sub_keys[0]]
             for idx, sub_key in enumerate(sub_keys[1:]):
-                assert (sub_key in cur)
                 if idx == len(sub_keys) - 2:
                     cur[sub_key] = value
                 else:
@@ -132,7 +131,7 @@ def check_gpu(use_gpu):
           "model on CPU"
 
     try:
-        if use_gpu and not paddle.fluid.is_compiled_with_cuda():
+        if use_gpu and not paddle.is_compiled_with_cuda():
             print(err)
             sys.exit(1)
     except Exception as e:
@@ -180,9 +179,9 @@ def train(config,
     if 'start_epoch' in best_model_dict:
         start_epoch = best_model_dict['start_epoch']
     else:
-        start_epoch = 0
+        start_epoch = 1
 
-    for epoch in range(start_epoch, epoch_num):
+    for epoch in range(start_epoch, epoch_num + 1):
         if epoch > 0:
             train_dataloader = build_dataloader(config, 'Train', device, logger)
         train_batch_cost = 0.0
@@ -236,7 +235,6 @@ def train(config,
                 train_batch_cost = 0.0
                 train_reader_cost = 0.0
                 batch_sum = 0
-                batch_start = time.time()
             # eval
             if global_step > start_eval_step and \
                     (global_step - start_eval_step) % eval_batch_step == 0 and dist.get_rank() == 0:
@@ -275,6 +273,7 @@ def train(config,
                                           best_model_dict[main_indicator],
                                           global_step)
             global_step += 1
+            batch_start = time.time()
         if dist.get_rank() == 0:
             save_model(
                 model,
@@ -333,21 +332,7 @@ def eval(model, valid_dataloader, post_process_class, eval_class):
     return metirc
 
 
-def save_inference_mode(model, config, logger):
-    model.eval()
-    save_path = '{}/infer/{}'.format(config['Global']['save_model_dir'],
-                                     config['Architecture']['model_type'])
-    if config['Architecture']['model_type'] == 'rec':
-        input_shape = [None, 3, 32, None]
-        jit_model = paddle.jit.to_static(
-            model, input_spec=[paddle.static.InputSpec(input_shape)])
-        paddle.jit.save(jit_model, save_path)
-        logger.info('inference model save to {}'.format(save_path))
-
-    model.train()
-
-
-def preprocess():
+def preprocess(is_train=False):
     FLAGS = ArgsParser().parse_args()
     config = load_config(FLAGS.config)
     merge_config(FLAGS.opt)
@@ -365,15 +350,17 @@ def preprocess():
     device = paddle.set_device(device)
 
     config['Global']['distributed'] = dist.get_world_size() != 1
-
-    # save_config
-    save_model_dir = config['Global']['save_model_dir']
-    os.makedirs(save_model_dir, exist_ok=True)
-    with open(os.path.join(save_model_dir, 'config.yml'), 'w') as f:
-        yaml.dump(dict(config), f, default_flow_style=False, sort_keys=False)
-
-    logger = get_logger(
-        name='root', log_file='{}/train.log'.format(save_model_dir))
+    if is_train:
+        # save_config
+        save_model_dir = config['Global']['save_model_dir']
+        os.makedirs(save_model_dir, exist_ok=True)
+        with open(os.path.join(save_model_dir, 'config.yml'), 'w') as f:
+            yaml.dump(
+                dict(config), f, default_flow_style=False, sort_keys=False)
+        log_file = '{}/train.log'.format(save_model_dir)
+    else:
+        log_file = None
+    logger = get_logger(name='root', log_file=log_file)
     if config['Global']['use_visualdl']:
         from visualdl import LogWriter
         vdl_writer_path = '{}/vdl/'.format(save_model_dir)

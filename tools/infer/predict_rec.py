@@ -18,12 +18,13 @@ __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(__dir__)
 sys.path.append(os.path.abspath(os.path.join(__dir__, '../..')))
 
+os.environ["FLAGS_allocator_strategy"] = 'auto_growth'
+
 import cv2
 import numpy as np
 import math
 import time
-
-import paddle.fluid as fluid
+import traceback
 
 import tools.infer.utility as utility
 from ppocr.postprocess import build_post_process
@@ -39,7 +40,6 @@ class TextRecognizer(object):
         self.character_type = args.rec_char_type
         self.rec_batch_num = args.rec_batch_num
         self.rec_algorithm = args.rec_algorithm
-        self.use_zero_copy_run = args.use_zero_copy_run
         postprocess_params = {
             'name': 'CTCLabelDecode',
             "character_type": args.rec_char_type,
@@ -101,12 +101,8 @@ class TextRecognizer(object):
             norm_img_batch = np.concatenate(norm_img_batch)
             norm_img_batch = norm_img_batch.copy()
             starttime = time.time()
-            if self.use_zero_copy_run:
-                self.input_tensor.copy_from_cpu(norm_img_batch)
-                self.predictor.zero_copy_run()
-            else:
-                norm_img_batch = fluid.core.PaddleTensor(norm_img_batch)
-                self.predictor.run([norm_img_batch])
+            self.input_tensor.copy_from_cpu(norm_img_batch)
+            self.predictor.run()
             outputs = []
             for output_tensor in self.output_tensors:
                 output = output_tensor.copy_to_cpu()
@@ -115,7 +111,7 @@ class TextRecognizer(object):
             rec_result = self.postprocess_op(preds)
             for rno in range(len(rec_result)):
                 rec_res[indices[beg_img_no + rno]] = rec_result[rno]
-            elapse = time.time() - starttime
+            elapse += time.time() - starttime
         return rec_res, elapse
 
 
@@ -135,8 +131,8 @@ def main(args):
         img_list.append(img)
     try:
         rec_res, predict_time = text_recognizer(img_list)
-    except Exception as e:
-        print(e)
+    except:
+        logger.info(traceback.format_exc())
         logger.info(
             "ERROR!!!! \n"
             "Please read the FAQ：https://github.com/PaddlePaddle/PaddleOCR#faq \n"
@@ -145,9 +141,10 @@ def main(args):
             "Please set --rec_image_shape='3,32,100' and --rec_char_type='en' ")
         exit()
     for ino in range(len(img_list)):
-        print("Predicts of %s:%s" % (valid_image_file_list[ino], rec_res[ino]))
-    print("Total predict time for %d images, cost: %.3f" %
-          (len(img_list), predict_time))
+        logger.info("Predicts of {}:{}".format(valid_image_file_list[ino],
+                                               rec_res[ino]))
+    logger.info("Total predict time for {} images, cost: {:.3f}".format(
+        len(img_list), predict_time))
 
 
 if __name__ == "__main__":

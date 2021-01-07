@@ -103,17 +103,17 @@ make inference_lib_dist
 更多编译参数选项可以参考Paddle C++预测库官网：[https://www.paddlepaddle.org.cn/documentation/docs/zh/advanced_guide/inference_deployment/inference/build_and_install_lib_cn.html](https://www.paddlepaddle.org.cn/documentation/docs/zh/advanced_guide/inference_deployment/inference/build_and_install_lib_cn.html)。
 
 
-* 编译完成之后，可以在`build/fluid_inference_install_dir/`文件下看到生成了以下文件及文件夹。
+* 编译完成之后，可以在`build/paddle_inference_install_dir/`文件下看到生成了以下文件及文件夹。
 
 ```
-build/fluid_inference_install_dir/
+build/paddle_inference_install_dir/
 |-- CMakeCache.txt
 |-- paddle
 |-- third_party
 |-- version.txt
 ```
 
-其中`paddle`就是之后进行C++预测时所需的Paddle库，`version.txt`中包含当前预测库的版本信息。
+其中`paddle`就是C++预测所需的Paddle库，`version.txt`中包含当前预测库的版本信息。
 
 #### 1.2.2 直接下载安装
 
@@ -122,10 +122,10 @@ build/fluid_inference_install_dir/
 * 下载之后使用下面的方法解压。
 
 ```
-tar -xf fluid_inference.tgz
+tar -xf paddle_inference.tgz
 ```
 
-最终会在当前的文件夹中生成`fluid_inference/`的子文件夹。
+最终会在当前的文件夹中生成`paddle_inference/`的子文件夹。
 
 
 ## 2 开始运行
@@ -137,11 +137,11 @@ tar -xf fluid_inference.tgz
 ```
 inference/
 |-- det_db
-|   |--model
-|   |--params
+|   |--inference.pdparams
+|   |--inference.pdimodel
 |-- rec_rcnn
-|   |--model
-|   |--params
+|   |--inference.pdparams
+|   |--inference.pdparams
 ```
 
 
@@ -180,7 +180,7 @@ cmake .. \
 make -j
 ```
 
-`OPENCV_DIR`为opencv编译安装的地址；`LIB_DIR`为下载(`fluid_inference`文件夹)或者编译生成的Paddle预测库地址(`build/fluid_inference_install_dir`文件夹)；`CUDA_LIB_DIR`为cuda库文件地址，在docker中；为`/usr/local/cuda/lib64`；`CUDNN_LIB_DIR`为cudnn库文件地址，在docker中为`/usr/lib/x86_64-linux-gnu/`。
+`OPENCV_DIR`为opencv编译安装的地址；`LIB_DIR`为下载(`paddle_inference`文件夹)或者编译生成的Paddle预测库地址(`build/paddle_inference_install_dir`文件夹)；`CUDA_LIB_DIR`为cuda库文件地址，在docker中；为`/usr/local/cuda/lib64`；`CUDNN_LIB_DIR`为cudnn库文件地址，在docker中为`/usr/lib/x86_64-linux-gnu/`。
 
 
 * 编译完成之后，会在`build`文件夹下生成一个名为`ocr_system`的可执行文件。
@@ -202,7 +202,6 @@ gpu_id  0 # GPU id，使用GPU时有效
 gpu_mem  4000  # 申请的GPU内存
 cpu_math_library_num_threads  10 # CPU预测时的线程数，在机器核数充足的情况下，该值越大，预测速度越快
 use_mkldnn 1 # 是否使用mkldnn库
-use_zero_copy_run 1 # 是否使用use_zero_copy_run进行预测
 
 # det config
 max_side_len  960 # 输入图像长宽大于960时，等比例缩放图像，使得图像最长边为960

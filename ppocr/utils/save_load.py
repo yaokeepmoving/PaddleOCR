@@ -55,8 +55,8 @@ def load_dygraph_pretrain(model, logger, path=None, load_static_weights=False):
             weight_name = weight_name.replace('binarize', '').replace(
                 'thresh', '')  # for DB
             if weight_name in pre_state_dict.keys():
-                logger.info('Load weight: {}, shape: {}'.format(
-                    weight_name, pre_state_dict[weight_name].shape))
+                # logger.info('Load weight: {}, shape: {}'.format(
+                #     weight_name, pre_state_dict[weight_name].shape))
                 if 'encoder_rnn' in key:
                     # delete axis which is 1
                     pre_state_dict[weight_name] = pre_state_dict[
@@ -102,7 +102,6 @@ def init_model(config, model, logger, optimizer=None, lr_scheduler=None):
             best_model_dict = states_dict.get('best_model_dict', {})
             if 'epoch' in states_dict:
                 best_model_dict['start_epoch'] = states_dict['epoch'] + 1
-            best_model_dict['start_epoch'] = best_model_dict['best_epoch'] + 1
 
         logger.info("resume from {}".format(checkpoints))
     elif pretrained_model:
